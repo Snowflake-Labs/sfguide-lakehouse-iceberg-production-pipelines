@@ -25,6 +25,7 @@ dependencies = [
     # (`.envrc` prepends `.venv/bin` after `uv sync`).
     "snowflake-cli>=3.16",
     "sfutils-extvolumes",
+    "sfutils-pat",
 ]
 
 [project.scripts]
@@ -54,3 +55,4 @@ dev = [
 
 [tool.uv.sources]
 sfutils-extvolumes = { git = "https://github.com/Snowflake-Labs/sfutils-extvolumes.git" }
+sfutils-pat = { git = "https://github.com/Snowflake-Labs/sfutils-pat.git" }

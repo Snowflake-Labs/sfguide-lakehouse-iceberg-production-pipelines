@@ -10,6 +10,7 @@ vars:
   SNOW_TRUST_CLI: uv run snowflake-catalog-trust
   SNOW_CATALOG_IAM: uv run snowflake-catalog-iam
   SNOW_LAB_SQL: uv run snowflake-lab-sql
+  PAT_CLI: uv run sfutils-pat
 
 tasks:
   create-glue-catalog-read-role:
@@ -139,6 +140,52 @@ tasks:
       then **`task dt:generate-sql`** when you want CLD and DT artifacts refreshed independently.
     cmds:
       - "{{.SNOW_LAB_SQL}} generate"
+
+  pat-create:
+    desc: Create PAT for duckdb_sa scoped to duckdb_silver_reader; store in OS keychain
+    summary: |
+      Generates a Programmatic Access Token for the **`duckdb_sa`** service account, scoped to
+      **`duckdb_silver_reader`**, and stores the token in your OS keychain via **`sfutils-pat`**.
+
+      After running, copy the token to **.env** with:
+        task snowflake:pat-print   # prints the stored token to stdout
+
+      ## Env vars used
+
+      - **`SA_USER`** — service account username (default: `duckdb_sa`)
+      - **`SA_ROLE`** — PAT role restriction (default: `duckdb_silver_reader`)
+
+      ## Verify flag names
+
+      Run `uv run sfutils-pat --help` after `uv sync` to confirm subcommand and flag names
+      before executing this task in a new environment.
+    cmds:
+      - "{{.PAT_CLI}} create --user ${SA_USER:-duckdb_sa} --role ${SA_ROLE:-duckdb_silver_reader}"
+
+  pat-print:
+    desc: Print PAT value for duckdb_sa from OS keychain to stdout; copy to .env as SNOWFLAKE_PASSWORD
+    summary: |
+      Retrieves the stored PAT for **`duckdb_sa`** from the OS keychain and prints it to stdout.
+      Copy the output to **.env**:
+
+        SNOWFLAKE_PASSWORD=<printed-token>
+
+      The keychain entry is the canonical copy. The **.env** value is a session-local working copy
+      only — never commit it.
+    cmds:
+      - "{{.PAT_CLI}} print --user ${SA_USER:-duckdb_sa}"
+
+  pat-revoke:
+    desc: Revoke and delete PAT for duckdb_sa from keychain and Snowflake; run before DROP USER
+    summary: |
+      Revokes the Programmatic Access Token for **`duckdb_sa`** in Snowflake and removes it from
+      the OS keychain. Run this **before** `DROP USER IF EXISTS duckdb_sa` during cleanup.
+
+      ## Env vars used
+
+      - **`SA_USER`** — service account username (default: `duckdb_sa`)
+    cmds:
+      - "{{.PAT_CLI}} revoke --user ${SA_USER:-duckdb_sa}"
 
   sis-deploy:
     desc: Deploy SiS app via sis-deploy CLI (project snowflake/sis)
