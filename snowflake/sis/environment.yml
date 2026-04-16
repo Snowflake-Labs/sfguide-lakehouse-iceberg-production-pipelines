@@ -1,0 +1,11 @@
+# Warehouse-runtime Streamlit in Snowflake — dependency bundle (see Snowflake docs:
+# https://docs.snowflake.com/en/developer-guide/streamlit/app-development/dependency-management )
+name: balloon_sis
+channels:
+  - snowflake
+  - nodefaults
+dependencies:
+  - streamlit
+  - snowflake-snowpark-python
+  - altair
+  - pandas

@@ -1,0 +1,45 @@
+# https://taskfile.dev
+# Copyright 2024-Present Kamesh Sampath
+# Licensed under the Apache License, Version 2.0
+#
+# Snowflake lab path: task bronze:*, task check-tools. Local k8s / kubectl flows removed.
+
+version: "3"
+
+dotenv: [".env"]
+
+includes:
+  bronze:
+    taskfile: .taskfiles/bronze.yml
+  snowflake:
+    taskfile: .taskfiles/snowflake.yml
+  dt:
+    taskfile: .taskfiles/dt.yml
+
+tasks:
+  check-tools:
+    desc: Verify lab CLIs on PATH + aws sts get-caller-identity (valid AWS session)
+    cmds:
+      - uv run check-lab-prereqs
+
+  default:
+    desc: List available tasks (start with task check-tools)
+    cmds:
+      - task --list
+
+  dashboard-local:
+    silent: true
+    aliases:
+      - dashboard
+      - streamlit
+    desc: (Optional dev) run local Streamlit — lab viz path is SiS; see lab/snowflake-streamlit-sis.md
+    cmds:
+      - uv run --package=dashboard dashboard
+
+  generator-local:
+    silent: true
+    desc: run the data generator locally (Python; no cluster)
+    aliases:
+      - generator
+    cmds:
+      - uv run --package=generator generator

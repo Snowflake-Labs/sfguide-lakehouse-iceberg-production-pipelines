@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lakehouse-iceberg-production-pipelines"
+version = "0.0.1"
+description = "A balloon game demo show how to use Snowflake to build lakehouse-iceberg-production-pipelines"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "common",
+    "mypy-boto3-glue>=1.37.0",
+    "cryptography>=44.0.0",
+    "jinja2>=3.1.5",
+    "pandas>=2.2.3",
+    "pyarrow==18.1.0",
+    "pydantic>=2.10.6",
+    "pyiceberg[s3fs]>=0.8.1",
+    "pyjwt>=2.10.1",
+    "python-dotenv>=1.0.1",
+    "click>=8.1.8",
+    "boto3>=1.35",
+    # Snowflake CLI in the project venv so learners need not install `snow` globally
+    # (`.envrc` prepends `.venv/bin` after `uv sync`).
+    "snowflake-cli>=3.16",
+    "sfutils-extvolumes",
+]
+
+[project.scripts]
+check-lab-prereqs = "tools.check_lab_prereqs:main"
+bronze-cli = "tools.bronze_preload.bronze_cli:main"
+load-bronze-sample = "tools.bronze_preload.load_sample:main"
+snowflake-catalog-trust = "tools.snowflake_lab.catalog_trust:cli"
+snowflake-catalog-iam = "tools.snowflake_lab.catalog_iam:cli"
+snowflake-lab-sql = "tools.snowflake_lab.sql_generate:cli"
+sis-deploy = "tools.sis_deploy.sis_deploy_cli:cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["tools"]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29.5",
+    "jupyter>=1.1.1",
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.6.7",
+    "mkdocs-mermaid2-plugin>=1.2.1",
+    "notebook>=7.3.2",
+    "ruff>=0.9.6",
+    "watchdog>=6.0.0",
+    "yamllint>=1.35.1",
+]
+
+[tool.uv.sources]
+sfutils-extvolumes = { git = "https://github.com/Snowflake-Labs/sfutils-extvolumes.git" }
