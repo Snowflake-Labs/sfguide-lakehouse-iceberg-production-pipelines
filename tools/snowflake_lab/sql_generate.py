@@ -27,6 +27,7 @@ from tools.snowflake_lab.defaults import (
     DEFAULT_SILVER_DATABASE,
     DEFAULT_SILVER_SCHEMA,
     DEFAULT_SNOWFLAKE_WAREHOUSE,
+    resolve_catalog_integration_name,
 )
 
 # Optional one-line file (repo-local, gitignored): same idea as bronze-warehouse-uri.txt.
@@ -548,9 +549,8 @@ def cli() -> None:
 @click.option(
     "--integration-name",
     envvar="SNOWFLAKE_CATALOG_INTEGRATION_NAME",
-    default=DEFAULT_CATALOG_INTEGRATION_NAME,
-    show_default=True,
-    help="Catalog integration object name (repo default matches trust tasks and lab docs).",
+    default=None,
+    help="Catalog integration object name (default: derived from LAB_USERNAME if set, else 'glue_rest_catalog_int').",
 )
 @click.option(
     "--sigv4-role-arn",
@@ -646,7 +646,7 @@ def cli() -> None:
 def generate_cmd(
     repo_root_opt: Path | None,
     output_dir: Path | None,
-    integration_name: str,
+    integration_name: str | None,
     sigv4_role_arn: str,
     linked_database: str,
     placeholder_role: bool,
@@ -666,6 +666,9 @@ def generate_cmd(
             "Use only one of --catalog-cld-only and --dt-pipelines-only."
         )
 
+    integration_name = (
+        integration_name or ""
+    ).strip() or resolve_catalog_integration_name()
     root = repo_root_opt or repo_root()
     write_catalog = not dt_pipelines_only
     write_dt = not catalog_cld_only

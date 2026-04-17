@@ -32,7 +32,7 @@ from pathlib import Path
 import click
 
 from tools.bronze_preload.bronze_aws import envsubst, repo_root
-from tools.snowflake_lab.defaults import DEFAULT_CATALOG_INTEGRATION_NAME
+from tools.snowflake_lab.defaults import resolve_catalog_integration_name
 
 
 def _mask_external_id(val: str) -> str:
@@ -252,9 +252,9 @@ def cli() -> None:
 @click.option(
     "--integration",
     envvar="SNOWFLAKE_CATALOG_INTEGRATION_NAME",
-    default=DEFAULT_CATALOG_INTEGRATION_NAME,
-    show_default=True,
-    help="Catalog integration name (override with SNOWFLAKE_CATALOG_INTEGRATION_NAME if you used another).",
+    default=None,
+    help="Catalog integration name (default: derived from LAB_USERNAME if set, else 'glue_rest_catalog_int'). "
+    "Override with SNOWFLAKE_CATALOG_INTEGRATION_NAME if you used another name.",
 )
 @click.option(
     "--json",
@@ -262,8 +262,9 @@ def cli() -> None:
     is_flag=True,
     help="Emit full property map as JSON (includes non-trust fields).",
 )
-def describe_cmd(integration: str, as_json: bool) -> None:
+def describe_cmd(integration: str | None, as_json: bool) -> None:
     """Print catalog integration properties (trust ``API_AWS_*`` / ``GLUE_*``, REST, …) from ``DESC``."""
+    integration = (integration or "").strip() or resolve_catalog_integration_name()
     props = describe_catalog_integration_properties(integration)
     if as_json:
         click.echo(json.dumps(props, indent=2))
@@ -289,9 +290,9 @@ def describe_cmd(integration: str, as_json: bool) -> None:
 @click.option(
     "--integration",
     envvar="SNOWFLAKE_CATALOG_INTEGRATION_NAME",
-    default=DEFAULT_CATALOG_INTEGRATION_NAME,
-    show_default=True,
-    help="Catalog integration name; used to run DESC when GLUE_* env vars are unset.",
+    default=None,
+    help="Catalog integration name (default: derived from LAB_USERNAME if set, else 'glue_rest_catalog_int'). "
+    "Used to run DESC when GLUE_* env vars are unset.",
 )
 @click.option(
     "--iam-user-arn",
@@ -329,9 +330,7 @@ def render_glue_catalog_trust_cmd(
     arn = (iam_user_arn or "").strip()
     ext = (external_id or "").strip()
     if not arn or not ext:
-        integ = (
-            integration or os.environ.get("SNOWFLAKE_CATALOG_INTEGRATION_NAME") or ""
-        ).strip() or DEFAULT_CATALOG_INTEGRATION_NAME
+        integ = (integration or "").strip() or resolve_catalog_integration_name()
         props = describe_catalog_integration_properties(integ)
         arn, ext = extract_glue_trust_fields(props)
 
