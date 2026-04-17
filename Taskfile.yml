@@ -17,6 +17,22 @@ includes:
     taskfile: .taskfiles/dt.yml
 
 tasks:
+  setup:
+    desc: Bootstrap — uv sync + create .env from template if missing
+    summary: |
+      1. Runs `uv sync` to install all Python deps and `uv run …` entrypoints.
+      2. Copies `.env.example` → `.env` when `.env` does not already exist.
+      Run once after cloning. Fill in `.env`, then `task check-tools`.
+    cmds:
+      - uv sync
+      - |
+          if [ ! -f .env ]; then
+            cp .env.example .env
+            echo "Created .env from .env.example — edit it and fill in your values before running task check-tools."
+          else
+            echo ".env already exists — skipping copy (edit it if needed)."
+          fi
+
   check-tools:
     desc: Verify lab CLIs on PATH + aws sts get-caller-identity (valid AWS session)
     cmds:
