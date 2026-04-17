@@ -12,12 +12,12 @@ staged artifact content.  silver_config.py reads the staged snowflake.yml
 So this tool temporarily patches the ``env:`` block with the derived values
 before deploying and restores the file afterwards.
 """
+
 from __future__ import annotations
 
 import os
 import re
 import subprocess
-import sys
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
@@ -72,11 +72,19 @@ def _derive_resource_names(lab_username: str | None) -> dict[str, str]:
 
     silver_db = (os.environ.get("SNOWFLAKE_SILVER_DATABASE") or "").strip()
     if not silver_db:
-        silver_db = f"{user}_{DEFAULT_SILVER_DATABASE}" if user else DEFAULT_SILVER_DATABASE
+        silver_db = (
+            f"{user}_{DEFAULT_SILVER_DATABASE}" if user else DEFAULT_SILVER_DATABASE
+        )
 
-    silver_schema = (os.environ.get("SNOWFLAKE_SILVER_SCHEMA") or DEFAULT_SILVER_SCHEMA).strip()
-    warehouse = (os.environ.get("SNOWFLAKE_WAREHOUSE") or DEFAULT_SNOWFLAKE_WAREHOUSE).strip()
-    apps_schema = (os.environ.get("SNOWFLAKE_APPS_SCHEMA") or _DEFAULT_APPS_SCHEMA).strip()
+    silver_schema = (
+        os.environ.get("SNOWFLAKE_SILVER_SCHEMA") or DEFAULT_SILVER_SCHEMA
+    ).strip()
+    warehouse = (
+        os.environ.get("SNOWFLAKE_WAREHOUSE") or DEFAULT_SNOWFLAKE_WAREHOUSE
+    ).strip()
+    apps_schema = (
+        os.environ.get("SNOWFLAKE_APPS_SCHEMA") or _DEFAULT_APPS_SCHEMA
+    ).strip()
     role = (os.environ.get("SNOWFLAKE_ROLE") or _DEFAULT_ROLE).strip()
 
     prefix = f"{user}_" if user else ""
@@ -95,7 +103,9 @@ def _derive_resource_names(lab_username: str | None) -> dict[str, str]:
 
 
 @contextmanager
-def _patched_snowflake_yml(yml_path: Path, env_patches: dict[str, str]) -> Iterator[None]:
+def _patched_snowflake_yml(
+    yml_path: Path, env_patches: dict[str, str]
+) -> Iterator[None]:
     """Temporarily bake *env_patches* into the ``env:`` block of snowflake.yml.
 
     Restores the original content in all cases (including exceptions / SystemExit).
@@ -156,6 +166,7 @@ def _print_config(names: dict[str, str], project_dir: Path) -> None:
 # CLI group
 # ---------------------------------------------------------------------------
 
+
 @click.group()
 def cli() -> None:
     """Deploy and inspect the Balloon Game Dashboard Streamlit-in-Snowflake app."""
@@ -165,6 +176,7 @@ def cli() -> None:
 # ---------------------------------------------------------------------------
 # show-config
 # ---------------------------------------------------------------------------
+
 
 @cli.command("show-config")
 @click.option(
@@ -228,6 +240,7 @@ def show_config_cmd(
 # ---------------------------------------------------------------------------
 # deploy
 # ---------------------------------------------------------------------------
+
 
 @cli.command(
     "deploy",
@@ -321,16 +334,24 @@ def deploy_cmd(
     extra_args: list[str] = list(ctx.args)
 
     cmd: list[str] = [
-        "snow", "streamlit", "deploy",
-        _APP_BASE_NAME,          # entity key in snowflake.yml; LAB_USERNAME_PREFIX template sets the deployed name
-        "--project", str(project_dir),
+        "snow",
+        "streamlit",
+        "deploy",
+        _APP_BASE_NAME,  # entity key in snowflake.yml; LAB_USERNAME_PREFIX template sets the deployed name
+        "--project",
+        str(project_dir),
         "--replace",
-        "--role", names["role"],
+        "--role",
+        names["role"],
         # Template substitution in snowflake.yml identifier / query_warehouse fields
-        "--env", f"LAB_USERNAME_PREFIX={names['prefix']}",
-        "--env", f"SNOWFLAKE_SILVER_DATABASE={names['silver_db']}",
-        "--env", f"SNOWFLAKE_WAREHOUSE={names['warehouse']}",
-        "--env", f"SNOWFLAKE_APPS_SCHEMA={names['apps_schema']}",
+        "--env",
+        f"LAB_USERNAME_PREFIX={names['prefix']}",
+        "--env",
+        f"SNOWFLAKE_SILVER_DATABASE={names['silver_db']}",
+        "--env",
+        f"SNOWFLAKE_WAREHOUSE={names['warehouse']}",
+        "--env",
+        f"SNOWFLAKE_APPS_SCHEMA={names['apps_schema']}",
     ]
     if open_browser:
         cmd.append("--open")

@@ -5,6 +5,7 @@ yaml-files:
 extends: default
 
 rules:
+  document-start: disable   # Taskfiles use comment headers instead of ---
   line-length:
     max: 160
     level: warning

@@ -10,16 +10,22 @@ import streamlit as st
 from colors import color_map
 
 st.title("Color Analysis")
-st.caption("Insights into players' balloon color preferences — usage patterns, color distribution heatmap, and per-color metrics (pops, points, bonus hits).")
+st.caption(
+    "Insights into players' balloon color preferences — usage patterns, color distribution heatmap, and per-color metrics (pops, points, bonus hits)."
+)
 
 
 def analyze_balloon_stats(df, ca_selected_player):
     _filtered_df = df[df["player"] == ca_selected_player]
 
     color_counts = (
-        _filtered_df.groupby(["player", "balloon_color"]).size().reset_index(name="count")
+        _filtered_df.groupby(["player", "balloon_color"])
+        .size()
+        .reset_index(name="count")
     )
-    favorite_colors = color_counts.sort_values("count", ascending=False).groupby("player").first()
+    favorite_colors = (
+        color_counts.sort_values("count", ascending=False).groupby("player").first()
+    )
 
     if ca_selected_player not in favorite_colors.index:
         return None
@@ -41,16 +47,22 @@ def analyze_color_patterns(df, ca_selected_player, gauge_color):
         }
     )
 
-    base = alt.Chart(gauge_data).encode(theta=alt.Theta("value:Q", scale=alt.Scale(domain=[0, total_colors]))).properties(
-        width=300,
-        height=300,
+    base = (
+        alt.Chart(gauge_data)
+        .encode(theta=alt.Theta("value:Q", scale=alt.Scale(domain=[0, total_colors])))
+        .properties(
+            width=300,
+            height=300,
+        )
     )
 
-    arc = base.mark_arc(innerRadius=100, cornerRadius=5, stroke="#fff").encode(color=alt.value(gauge_color))
-
-    text = base.mark_text(align="center", baseline="middle", fontSize=32, font="Arial").encode(
-        text="display:N"
+    arc = base.mark_arc(innerRadius=100, cornerRadius=5, stroke="#fff").encode(
+        color=alt.value(gauge_color)
     )
+
+    text = base.mark_text(
+        align="center", baseline="middle", fontSize=32, font="Arial"
+    ).encode(text="display:N")
 
     title = (
         alt.Chart(pd.DataFrame([{"text": "Unique Colors vs Total Colors"}]))
@@ -77,7 +89,9 @@ def analyze_color_patterns(df, ca_selected_player, gauge_color):
             color=alt.Color(
                 "count:Q",
                 scale=alt.Scale(scheme=st.session_state.color_scheme),
-                legend=alt.Legend(format="d", values=sorted(color_dist["count"].unique())),
+                legend=alt.Legend(
+                    format="d", values=sorted(color_dist["count"].unique())
+                ),
             ),
             tooltip=["player", "balloon_color", alt.Tooltip("count:Q", format=",d")],
         )
@@ -102,16 +116,24 @@ def create_balloon_chart(ca_filtered_df, _ca_selected_player, ca_selected_metric
         alt.Chart(ca_filtered_df)
         .mark_bar()
         .encode(
-            x=alt.X("balloon_color:N", title=None, axis=alt.Axis(labels=False, ticks=False)),
+            x=alt.X(
+                "balloon_color:N", title=None, axis=alt.Axis(labels=False, ticks=False)
+            ),
             y=alt.Y(f"sum({ca_selected_metric}):Q", title="Total"),
             color=alt.Color(
                 "balloon_color:N",
-                scale=alt.Scale(domain=list(color_map.keys()), range=list(color_map.values())),
+                scale=alt.Scale(
+                    domain=list(color_map.keys()), range=list(color_map.values())
+                ),
                 legend=None,
             ),
             tooltip=[
                 alt.Tooltip("balloon_color:N", title="Color"),
-                alt.Tooltip(f"sum({ca_selected_metric}):Q", title=metric_titles[ca_selected_metric], format=",.0f"),
+                alt.Tooltip(
+                    f"sum({ca_selected_metric}):Q",
+                    title=metric_titles[ca_selected_metric],
+                    format=",.0f",
+                ),
             ],
         )
         .properties(
@@ -137,12 +159,26 @@ def create_balloon_chart(ca_filtered_df, _ca_selected_player, ca_selected_metric
         player_total = ca_filtered_df["points_by_color"].sum()
         score_text = (
             alt.Chart({"values": [{"score": player_total}]})
-            .mark_text(align="left", baseline="top", fontSize=16, text="Total Score", dx=10, dy=10)
+            .mark_text(
+                align="left",
+                baseline="top",
+                fontSize=16,
+                text="Total Score",
+                dx=10,
+                dy=10,
+            )
             .encode(x=alt.value(20), y=alt.value(30))
         )
         score_value = (
             alt.Chart({"values": [{"score": player_total}]})
-            .mark_text(align="left", baseline="top", fontSize=16, fontWeight="bold", dx=100, dy=10)
+            .mark_text(
+                align="left",
+                baseline="top",
+                fontSize=16,
+                fontWeight="bold",
+                dx=100,
+                dy=10,
+            )
             .encode(
                 text=alt.Text("score:Q", format=",.0f"),
                 x=alt.value(20),
@@ -190,7 +226,11 @@ if st.session_state.balloon_colored_pops is not None:
     with col2:
         st.metric(
             "Total Balloon Pops",
-            int(colored_pops[colored_pops["player"] == selected_player]["balloon_pops"].sum()),
+            int(
+                colored_pops[colored_pops["player"] == selected_player][
+                    "balloon_pops"
+                ].sum()
+            ),
         )
     with col3:
         st.metric("Total Colors Used", int(colored_pops["balloon_color"].nunique()))

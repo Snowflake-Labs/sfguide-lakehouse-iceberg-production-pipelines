@@ -1,0 +1,43 @@
+repos:
+  # --- General hygiene -------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.md$'          # trailing spaces are intentional in Markdown
+      - id: end-of-file-fixer
+        exclude: '\.ipynb$'       # nbstripout owns notebook formatting
+      - id: check-merge-conflict
+      - id: check-case-conflict   # guards cross-platform SQL/file name clashes
+      - id: check-added-large-files
+        args: [--maxkb=500]       # data lives in S3; no large files in git
+      - id: detect-private-key    # catch accidental RSA/PEM key commits
+      - id: no-commit-to-branch
+        args: [--branch, main]
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+
+  # --- Python linting / formatting -------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # --- YAML linting (uses project .yamllint config) --------------------------
+  - repo: local
+    hooks:
+      - id: yamllint
+        name: yamllint
+        language: system
+        entry: uv run --no-sync yamllint
+        types: [yaml]
+
+  # --- Notebook output stripping ---------------------------------------------
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.7.1
+    hooks:
+      - id: nbstripout
+        args: [--drop-empty-cells, --strip-init-cells]

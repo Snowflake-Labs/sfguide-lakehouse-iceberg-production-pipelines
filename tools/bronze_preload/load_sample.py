@@ -17,6 +17,7 @@ Optional:
   DELAY / BRONZE_GENERATOR_DELAY  seconds between pops (Kafka parity)
   NUM_PLAYERS, BONUS_PROBABILITY
 """
+
 from __future__ import annotations
 
 import argparse
@@ -139,7 +140,9 @@ def resolve_row_count(cli_value: int | None) -> int:
 
 
 def _delay_seconds() -> float:
-    raw = (os.environ.get("BRONZE_GENERATOR_DELAY") or os.environ.get("DELAY") or "1.0").strip()
+    raw = (
+        os.environ.get("BRONZE_GENERATOR_DELAY") or os.environ.get("DELAY") or "1.0"
+    ).strip()
     try:
         return max(0.05, float(raw))
     except ValueError:
@@ -370,7 +373,9 @@ def main() -> int:
             f"timeline at {plan.delay_sec:g}s/pop) → {BRONZE_RAW_EVENTS_TABLE} (dataset={args.dataset!r})",
             flush=True,
         )
-        summary = f"events={plan.n_events}, delay_sec={plan.delay_sec:g}, mode=generator"
+        summary = (
+            f"events={plan.n_events}, delay_sec={plan.delay_sec:g}, mode=generator"
+        )
 
     t0 = time.perf_counter()
     ensure_table(catalog, db, BRONZE_RAW_EVENTS_TABLE, schema)
@@ -382,7 +387,10 @@ def main() -> int:
     )
     elapsed = time.perf_counter() - t0
     n = len(row_list)
-    print(f"info: {db}.{BRONZE_RAW_EVENTS_TABLE}: loaded {n} row(s) in {elapsed:.3f}s", flush=True)
+    print(
+        f"info: {db}.{BRONZE_RAW_EVENTS_TABLE}: loaded {n} row(s) in {elapsed:.3f}s",
+        flush=True,
+    )
 
     print(
         f"OK: dataset {args.dataset!r}, {summary} — Glue database {db!r}, warehouse {warehouse!r}"

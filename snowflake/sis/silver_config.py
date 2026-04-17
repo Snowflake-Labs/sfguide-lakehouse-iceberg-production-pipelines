@@ -42,7 +42,9 @@ def _parse_env_block(yaml_text: str) -> dict[str, str]:
         if not m:
             continue
         key, val = m.group(1), m.group(2).strip()
-        if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+        if (val.startswith('"') and val.endswith('"')) or (
+            val.startswith("'") and val.endswith("'")
+        ):
             val = val[1:-1]
         out[key] = val
     return out

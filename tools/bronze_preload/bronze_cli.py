@@ -1,6 +1,7 @@
 # Copyright 2024-Present Kamesh Sampath
 # Licensed under the Apache License, Version 2.0
 """Cross-platform bronze AWS setup (Glue, S3 Tables, IAM render). Replaces bash scripts."""
+
 from __future__ import annotations
 
 import json
@@ -37,7 +38,9 @@ from .bronze_aws import (
 )
 from .bronze_tables import BRONZE_GLUE_TABLES as TABLES
 from .lakeformation_bronze import run_lakeformation_setup
-from tools.snowflake_lab.catalog_iam import delete_tagged_snowflake_glue_catalog_read_role
+from tools.snowflake_lab.catalog_iam import (
+    delete_tagged_snowflake_glue_catalog_read_role,
+)
 
 
 def _read_text_strip(path: Path) -> str | None:
@@ -59,7 +62,9 @@ def _s3tables_cli_ok() -> bool:
 def _resolve_s3tables_table_bucket_arn(profile: str, region: str, tb_name: str) -> str:
     if not tb_name or not _s3tables_cli_ok():
         return ""
-    data = aws_json(profile, region, ["s3tables", "list-table-buckets", "--no-paginate"])
+    data = aws_json(
+        profile, region, ["s3tables", "list-table-buckets", "--no-paginate"]
+    )
     for b in data.get("tableBuckets") or []:
         if b.get("name") == tb_name:
             return (b.get("arn") or "").strip()
@@ -78,7 +83,9 @@ def _echo_s3tables_dry_run_plan(
     """Human-oriented summary after a read-only list-table-buckets call."""
     click.echo("")
     click.echo("Dry run — S3 Tables setup")
-    click.echo("(read-only: list-table-buckets only; no creates; nothing under .aws-config/)")
+    click.echo(
+        "(read-only: list-table-buckets only; no creates; nothing under .aws-config/)"
+    )
     click.echo("")
     click.echo("  Session")
     click.echo(f"    AWS profile     {profile}")
@@ -94,17 +101,27 @@ def _echo_s3tables_dry_run_plan(
             click.echo("    In this account  already present")
             click.echo(f"                      {table_bucket_arn}")
         else:
-            click.echo("    In this account  not listed — would create a new table bucket with this name")
+            click.echo(
+                "    In this account  not listed — would create a new table bucket with this name"
+            )
     else:
         click.echo("    Table bucket    (not set — cannot create until you name it)")
         click.echo("    Set either")
-        click.echo("      LAB_USERNAME           workshop id; repo derives the bucket name, e.g.")
+        click.echo(
+            "      LAB_USERNAME           workshop id; repo derives the bucket name, e.g."
+        )
         example_lab = "workshop01"
         ex_bucket = f"{sanitize_lab_slug_bucket(example_lab)}-balloon-s3tables"
         click.echo(f"                         LAB_USERNAME={example_lab}")
-        click.echo(f"                         → BRONZE_S3TABLES_BUCKET_NAME={ex_bucket}")
-        click.echo("      BRONZE_S3TABLES_BUCKET_NAME   explicit global name ([a-z0-9-], 3–63 chars)")
-        click.echo("    (The bucket list above is still shown so you can see what already exists.)")
+        click.echo(
+            f"                         → BRONZE_S3TABLES_BUCKET_NAME={ex_bucket}"
+        )
+        click.echo(
+            "      BRONZE_S3TABLES_BUCKET_NAME   explicit global name ([a-z0-9-], 3–63 chars)"
+        )
+        click.echo(
+            "    (The bucket list above is still shown so you can see what already exists.)"
+        )
     click.echo(f"    Namespace       {ns}")
     click.echo("    ICEBERG tables  (would run create-table for each if missing)")
     for t in tables:
@@ -211,7 +228,9 @@ def render_iam_cmd(
         os.environ["AWS_ACCOUNT_ID"] = resolve_aws_account_id(profile, region)
 
     arn = ensure_bronze_s3_arn_for_policy()
-    click.echo(f"info: BRONZE_S3_ARN={arn} (derived from BRONZE_BUCKET_NAME for policy template)")
+    click.echo(
+        f"info: BRONZE_S3_ARN={arn} (derived from BRONZE_BUCKET_NAME for policy template)"
+    )
 
     root = repo_root()
     template_path = root / "lab/aws/bronze-glue-writer-policy.json"
@@ -449,7 +468,9 @@ def s3tables_setup_cmd(
     root = repo_root()
     require_aws_cli_s3tables()
 
-    data = aws_json(profile, region, ["s3tables", "list-table-buckets", "--no-paginate"])
+    data = aws_json(
+        profile, region, ["s3tables", "list-table-buckets", "--no-paginate"]
+    )
     if not dry_run:
         ensure_aws_config_dir(root)
         list_path = root / ".aws-config/s3tables-list-table-buckets.json"
@@ -775,7 +796,9 @@ def snowflake_summary_cmd(
 
     click.echo("")
     click.echo("Bronze → Snowflake / CLD quick reference (read-only; no writes)")
-    click.echo(f"  AWS_PROFILE={profile}  AWS_REGION={region}  AWS_ACCOUNT_ID={account}")
+    click.echo(
+        f"  AWS_PROFILE={profile}  AWS_REGION={region}  AWS_ACCOUNT_ID={account}"
+    )
     click.echo("")
     click.echo("--- Shell exports (warehouse / Glue identifiers) ---")
     click.echo(f"export AWS_REGION={region!s}")
@@ -831,7 +854,9 @@ def snowflake_summary_cmd(
     if file_tb_arn:
         click.echo(f"  {p_arn}: {file_tb_arn}")
     else:
-        click.echo(f"  {p_arn}: (missing — run task bronze:s3tables-setup after naming bucket)")
+        click.echo(
+            f"  {p_arn}: (missing — run task bronze:s3tables-setup after naming bucket)"
+        )
     click.echo("")
     click.echo(
         "Hint: paste `GLUE_ICEBERG_REST_URI` / ARNs into notes or IAM alongside "
@@ -1022,7 +1047,11 @@ def cleanup_cmd(
             skip_glue_database_from_file=skip_glue,
             skip_s3tables_bucket_from_file=skip_tb,
         )
-        for key in ("GLUE_DATABASE", "BRONZE_BUCKET_NAME", "BRONZE_S3TABLES_BUCKET_NAME"):
+        for key in (
+            "GLUE_DATABASE",
+            "BRONZE_BUCKET_NAME",
+            "BRONZE_S3TABLES_BUCKET_NAME",
+        ):
             if key in applied:
                 click.echo(
                     f"info: cleanup {key}={applied[key]!r} "
@@ -1057,7 +1086,9 @@ def cleanup_cmd(
     s3tables_tables: list[str] = []
     if tb_name:
         require_aws_cli_s3tables()
-        buckets = aws_json(profile, region, ["s3tables", "list-table-buckets", "--no-paginate"])
+        buckets = aws_json(
+            profile, region, ["s3tables", "list-table-buckets", "--no-paginate"]
+        )
         for b in buckets.get("tableBuckets") or []:
             if b.get("name") == tb_name:
                 table_bucket_arn = b.get("arn") or ""
@@ -1098,13 +1129,17 @@ def cleanup_cmd(
 
     click.echo("Cleanup plan — bronze resources")
     click.echo(f"  profile={profile} region={region}")
-    click.echo(f"  Glue database={glue_db!r} exists={glue_exists} tables={len(glue_tables)}")
+    click.echo(
+        f"  Glue database={glue_db!r} exists={glue_exists} tables={len(glue_tables)}"
+    )
     if glue_tables:
         click.echo("    Glue tables to delete:")
         for name in glue_tables:
             click.echo(f"      • {name}")
     if tb_name:
-        click.echo(f"  S3 Tables bucket={tb_name!r} namespace={ns!r} present={s3tables_present}")
+        click.echo(
+            f"  S3 Tables bucket={tb_name!r} namespace={ns!r} present={s3tables_present}"
+        )
         if table_bucket_arn:
             click.echo(f"    table_bucket_arn={table_bucket_arn}")
             click.echo(f"    S3 Tables to delete={len(s3tables_tables)}")
@@ -1115,7 +1150,9 @@ def cleanup_cmd(
     else:
         click.echo("  S3 Tables bucket not set; skipping S3 Tables cleanup")
     wh_bucket = (os.environ.get("BRONZE_BUCKET_NAME") or "").strip()
-    click.echo(f"  Warehouse bucket BRONZE_BUCKET_NAME={wh_bucket!r} — never deleted or emptied by this command.")
+    click.echo(
+        f"  Warehouse bucket BRONZE_BUCKET_NAME={wh_bucket!r} — never deleted or emptied by this command."
+    )
     click.echo(
         "  Note: Glue + S3 Tables control-plane deletes only. "
         "Objects under s3://<BRONZE_BUCKET_NAME>/iceberg/ are unchanged; empty that prefix in S3 if you want a hard reset."

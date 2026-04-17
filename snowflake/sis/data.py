@@ -55,7 +55,9 @@ def _load_color_stats_raw(silver_db: str, silver_schema: str) -> pd.DataFrame:
     """
     df = _lower_cols(_session().sql(q).to_pandas())
     if not df.empty:
-        df = df.astype({"balloon_pops": "int64", "points_by_color": "int64", "bonus_hits": "int64"})
+        df = df.astype(
+            {"balloon_pops": "int64", "points_by_color": "int64", "bonus_hits": "int64"}
+        )
     return df
 
 
@@ -69,8 +71,12 @@ def _load_color_performance_raw(silver_db: str, silver_schema: str) -> pd.DataFr
     df = _lower_cols(_session().sql(q).to_pandas())
     if not df.empty:
         df["window_start"] = pd.to_datetime(df["window_start"])
-        df["avg_score_per_pop"] = pd.to_numeric(df["avg_score_per_pop"], errors="coerce")
-        df["total_pops"] = pd.to_numeric(df["total_pops"], errors="coerce").astype("int64")
+        df["avg_score_per_pop"] = pd.to_numeric(
+            df["avg_score_per_pop"], errors="coerce"
+        )
+        df["total_pops"] = pd.to_numeric(df["total_pops"], errors="coerce").astype(
+            "int64"
+        )
     return df
 
 
@@ -85,7 +91,10 @@ def _leaderboard_for_ui(df: pd.DataFrame) -> pd.DataFrame:
 def ensure_loaded() -> None:
     """Populate ``st.session_state`` keys used by ``pages/*.py``."""
     sig = sc.silver_ids()
-    if st.session_state.get("_sis_data_sig") == sig and st.session_state.get("leaderboard_data") is not None:
+    if (
+        st.session_state.get("_sis_data_sig") == sig
+        and st.session_state.get("leaderboard_data") is not None
+    ):
         return
     try:
         db, sch = sig

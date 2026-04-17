@@ -19,7 +19,9 @@ def create_score_chart(data, f_selected_players, f_time_unit: str = "minutes"):
     filtered_df["window_start"] = pd.to_datetime(filtered_df["window_start"])
 
     aggregated_df = (
-        filtered_df.groupby(["window_start", "player"])["total_score"].max().reset_index()
+        filtered_df.groupby(["window_start", "player"])["total_score"]
+        .max()
+        .reset_index()
     )
 
     if f_time_unit == "hours":
@@ -63,11 +65,15 @@ def filter_data_by_time(
 
 
 st.title("Leaderboard")
-st.caption("Real-time analytics of player performance — top-5 scoreboard with bonus hits and interactive score trends over selectable time ranges.")
+st.caption(
+    "Real-time analytics of player performance — top-5 scoreboard with bonus hits and interactive score trends over selectable time ranges."
+)
 
 if st.session_state.leaderboard_data is not None:
     leaderboard = st.session_state.leaderboard_data
-    latest_records = leaderboard.sort_values("event_ts", ascending=False).drop_duplicates("player")
+    latest_records = leaderboard.sort_values(
+        "event_ts", ascending=False
+    ).drop_duplicates("player")
     combined_stats = (
         latest_records.groupby("player")
         .agg({"total_score": "sum", "bonus_hits": "sum"})
@@ -76,7 +82,9 @@ if st.session_state.leaderboard_data is not None:
     )
 
     st.header("Scoreboard")
-    max_score = int(combined_stats["total_score"].max()) if not combined_stats.empty else 1
+    max_score = (
+        int(combined_stats["total_score"].max()) if not combined_stats.empty else 1
+    )
     st.dataframe(
         combined_stats.head(5),
         column_config={
@@ -132,7 +140,9 @@ if st.session_state.leaderboard_data is not None:
                 )
 
             with col2:
-                end_time = st.time_input("End Time", value=pd.to_datetime(max_time).time())
+                end_time = st.time_input(
+                    "End Time", value=pd.to_datetime(max_time).time()
+                )
                 end_date = st.date_input(
                     "End Date",
                     value=pd.to_datetime(max_time).date(),
@@ -148,7 +158,9 @@ if st.session_state.leaderboard_data is not None:
         )
 
         if selected_players:
-            chart = create_score_chart(filtered_realtime_scores_df, selected_players, time_unit)
+            chart = create_score_chart(
+                filtered_realtime_scores_df, selected_players, time_unit
+            )
             st.altair_chart(chart, use_container_width=True)
         else:
             st.warning("Please select at least one player from the sidebar.")

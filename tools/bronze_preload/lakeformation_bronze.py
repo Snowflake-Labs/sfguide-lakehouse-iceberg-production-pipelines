@@ -1,6 +1,7 @@
 # Copyright 2024-Present Kamesh Sampath
 # Licensed under the Apache License, Version 2.0
 """Lake Formation setup for bronze warehouse + Glue DB (Snowflake vended-credentials path)."""
+
 from __future__ import annotations
 
 import json
@@ -54,7 +55,11 @@ def _account_id_from_glue_or_sts(root: Path, region: str) -> str:
         if isinstance(data, dict):
             db = data.get("Database") or {}
             cid = db.get("CatalogId")
-            if isinstance(cid, str) and cid.strip().isdigit() and len(cid.strip()) == 12:
+            if (
+                isinstance(cid, str)
+                and cid.strip().isdigit()
+                and len(cid.strip()) == 12
+            ):
                 return cid.strip()
     require_aws_profile()
     prof = (os.environ.get("AWS_PROFILE") or "").strip()
@@ -62,7 +67,9 @@ def _account_id_from_glue_or_sts(root: Path, region: str) -> str:
 
 
 def default_lf_bronze_data_access_role_name() -> str:
-    explicit = (os.environ.get("LAKE_FORMATION_BRONZE_DATA_ACCESS_ROLE_NAME") or "").strip()
+    explicit = (
+        os.environ.get("LAKE_FORMATION_BRONZE_DATA_ACCESS_ROLE_NAME") or ""
+    ).strip()
     if explicit:
         return explicit
     lab = (os.environ.get("LAB_USERNAME") or "").strip()
@@ -75,7 +82,9 @@ def _resolve_sigv4_role_arn(root: Path) -> str:
     env_arn = (os.environ.get("SNOWFLAKE_GLUE_CATALOG_IAM_ROLE_ARN") or "").strip()
     if env_arn:
         return env_arn
-    return _read_first_line(root / ".aws-config" / "snowflake-glue-catalog-iam-role-arn.txt")
+    return _read_first_line(
+        root / ".aws-config" / "snowflake-glue-catalog-iam-role-arn.txt"
+    )
 
 
 def _load_context(root: Path) -> dict[str, str]:
@@ -169,7 +178,9 @@ def run_lakeformation_setup(*, root: Path | None, dry_run: bool) -> None:
     policy_doc = _iam_policy_doc(root, ctx)
     trust_doc = _iam_trust_doc(root)
     s3_resource_arn = f"arn:aws:s3:::{bucket}"
-    admin_arn = (os.environ.get("LAKE_FORMATION_ADMIN_ESCAPE_PRINCIPAL_ARN") or "").strip()
+    admin_arn = (
+        os.environ.get("LAKE_FORMATION_ADMIN_ESCAPE_PRINCIPAL_ARN") or ""
+    ).strip()
 
     require_aws_profile()
     prof = os.environ["AWS_PROFILE"].strip()
@@ -192,7 +203,9 @@ def run_lakeformation_setup(*, root: Path | None, dry_run: bool) -> None:
     if dry_run:
         click.echo("[dry-run] No AWS writes. Planned steps:")
         click.echo("  1) IAM create/update role + inline policy on LF data-access role")
-        click.echo("  2) lakeformation.register-resource (LF-only: no hybrid, no federation)")
+        click.echo(
+            "  2) lakeformation.register-resource (LF-only: no hybrid, no federation)"
+        )
         click.echo("  3) glue.update-database (CreateTableDefaultPermissions=[])")
         click.echo("  4) lakeformation.grant-permissions → SIGV4 (database + tables)")
         if admin_arn:
@@ -214,7 +227,10 @@ def run_lakeformation_setup(*, root: Path | None, dry_run: bool) -> None:
         print(f"info: created IAM role {lf_role_name!r}", file=sys.stderr)
     except ClientError as e:
         if e.response.get("Error", {}).get("Code") == "EntityAlreadyExists":
-            print(f"info: IAM role {lf_role_name!r} exists; updating policies.", file=sys.stderr)
+            print(
+                f"info: IAM role {lf_role_name!r} exists; updating policies.",
+                file=sys.stderr,
+            )
         else:
             raise
     iam.put_role_policy(
@@ -235,14 +251,22 @@ def run_lakeformation_setup(*, root: Path | None, dry_run: bool) -> None:
         err = e.response.get("Error", {})
         code, msg = err.get("Code", ""), err.get("Message", "")
         if code == "InvalidInputException" and "already" in msg.lower():
-            print(f"info: S3 location likely already registered: {msg}", file=sys.stderr)
+            print(
+                f"info: S3 location likely already registered: {msg}", file=sys.stderr
+            )
         else:
             raise
 
     # 3) Glue database — merge from current
     gdb = glue.get_database(Name=glue_db).get("Database") or {}
     db_in: dict[str, object] = {"Name": glue_db, "CreateTableDefaultPermissions": []}
-    for key in ("Description", "LocationUri", "Parameters", "TargetDatabase", "FederatedDatabase"):
+    for key in (
+        "Description",
+        "LocationUri",
+        "Parameters",
+        "TargetDatabase",
+        "FederatedDatabase",
+    ):
         if key in gdb and gdb[key] is not None:
             db_in[key] = gdb[key]
     glue.update_database(Name=glue_db, DatabaseInput=db_in)

@@ -20,6 +20,7 @@ Env:
 Optional overrides (skip ``snow`` describe when both set):
   GLUE_AWS_IAM_USER_ARN / API_AWS_IAM_USER_ARN, GLUE_AWS_EXTERNAL_ID / API_AWS_EXTERNAL_ID
 """
+
 from __future__ import annotations
 
 import json
@@ -124,7 +125,9 @@ def _props_from_flat_describe_dict(d: dict) -> dict[str, str]:
     return out
 
 
-def _merge_snow_describe_to_props(parsed: object, rows: list[dict[str, object]]) -> dict[str, str]:
+def _merge_snow_describe_to_props(
+    parsed: object, rows: list[dict[str, object]]
+) -> dict[str, str]:
     """Build property map from row-shaped or flat ``snow sql --format json`` output."""
     props: dict[str, str] = {}
     for row in rows:
@@ -219,14 +222,12 @@ def extract_glue_trust_fields(props: dict[str, str]) -> tuple[str, str]:
     Snowflake may return either ``GLUE_AWS_*`` (older docs) or ``API_AWS_IAM_USER_ARN`` /
     ``API_AWS_EXTERNAL_ID`` for ``ICEBERG_REST`` catalog integrations — same trust policy use.
     """
-    arn = (
-        (props.get("GLUE_AWS_IAM_USER_ARN") or "").strip()
-        or (props.get("API_AWS_IAM_USER_ARN") or "").strip()
-    )
-    ext = (
-        (props.get("GLUE_AWS_EXTERNAL_ID") or "").strip()
-        or (props.get("API_AWS_EXTERNAL_ID") or "").strip()
-    )
+    arn = (props.get("GLUE_AWS_IAM_USER_ARN") or "").strip() or (
+        props.get("API_AWS_IAM_USER_ARN") or ""
+    ).strip()
+    ext = (props.get("GLUE_AWS_EXTERNAL_ID") or "").strip() or (
+        props.get("API_AWS_EXTERNAL_ID") or ""
+    ).strip()
     if not arn or not ext:
         missing: list[str] = []
         if not arn:
@@ -329,9 +330,8 @@ def render_glue_catalog_trust_cmd(
     ext = (external_id or "").strip()
     if not arn or not ext:
         integ = (
-            (integration or os.environ.get("SNOWFLAKE_CATALOG_INTEGRATION_NAME") or "").strip()
-            or DEFAULT_CATALOG_INTEGRATION_NAME
-        )
+            integration or os.environ.get("SNOWFLAKE_CATALOG_INTEGRATION_NAME") or ""
+        ).strip() or DEFAULT_CATALOG_INTEGRATION_NAME
         props = describe_catalog_integration_properties(integ)
         arn, ext = extract_glue_trust_fields(props)
 

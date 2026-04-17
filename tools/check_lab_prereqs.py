@@ -2,6 +2,7 @@
 # Copyright 2024-Present Kamesh Sampath
 # Licensed under the Apache License, Version 2.0
 """Verify common lab CLIs are on PATH and AWS credentials work (STS). Stdlib only."""
+
 from __future__ import annotations
 
 import shutil
@@ -144,11 +145,15 @@ def _check_aws_sts_caller_identity() -> bool:
         )
     except (OSError, subprocess.TimeoutExpired) as e:
         print(f"MISS  aws sts get-caller-identity  (could not run: {e})")
-        print("      → https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html")
+        print(
+            "      → https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html"
+        )
         return False
     if r.returncode != 0:
         err = (r.stderr or r.stdout or "").strip()
-        print("MISS  aws sts get-caller-identity  (invalid or expired credentials / no profile)")
+        print(
+            "MISS  aws sts get-caller-identity  (invalid or expired credentials / no profile)"
+        )
         for line in err.splitlines()[:8]:
             if line.strip():
                 print(f"      {line}")

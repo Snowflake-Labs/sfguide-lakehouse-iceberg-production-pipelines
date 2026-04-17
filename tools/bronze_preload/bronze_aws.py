@@ -1,6 +1,7 @@
 # Copyright 2024-Present Kamesh Sampath
 # Licensed under the Apache License, Version 2.0
 """Shared helpers for bronze AWS CLI (cross-platform; replaces scripts/lib.sh)."""
+
 from __future__ import annotations
 
 import json
@@ -25,7 +26,9 @@ def ensure_aws_config_dir(root: Path | None = None) -> Path:
 
 def require_aws_profile() -> None:
     if not os.environ.get("AWS_PROFILE"):
-        print("error: set AWS_PROFILE to a real AWS credential profile", file=sys.stderr)
+        print(
+            "error: set AWS_PROFILE to a real AWS credential profile", file=sys.stderr
+        )
         raise SystemExit(1)
 
 
@@ -155,7 +158,9 @@ def derive_bronze_resource_names() -> None:
             raise SystemExit(1)
         if not os.environ.get("GLUE_DATABASE"):
             os.environ["GLUE_DATABASE"] = f"{gslug}_balloon_pops"
-            print(f"info: GLUE_DATABASE={os.environ['GLUE_DATABASE']} (default from LAB_USERNAME)")
+            print(
+                f"info: GLUE_DATABASE={os.environ['GLUE_DATABASE']} (default from LAB_USERNAME)"
+            )
         prefix = f"{bslug}-"
 
         raw_tables = (os.environ.get("BRONZE_S3TABLES_BUCKET_NAME") or "").strip()
@@ -313,7 +318,9 @@ def ensure_bronze_warehouse_s3_bucket(
         err = e.response.get("Error") or {}
         code = err.get("Code", "")
         if code in ("BucketAlreadyOwnedByYou", "BucketAlreadyExists"):
-            print(f"info: S3 warehouse bucket {bucket!r} already exists (concurrent create)")
+            print(
+                f"info: S3 warehouse bucket {bucket!r} already exists (concurrent create)"
+            )
             return "exists"
         msg = err.get("Message", str(e))
         print(f"error: CreateBucket failed ({code}): {msg}", file=sys.stderr)
@@ -357,7 +364,9 @@ def parse_s3tables_table_bucket_name_from_arn(arn: str) -> str | None:
     return name or None
 
 
-def resolve_s3tables_table_bucket_from_aws_config_files(root: Path | None = None) -> str:
+def resolve_s3tables_table_bucket_from_aws_config_files(
+    root: Path | None = None,
+) -> str:
     """S3 Tables table-bucket name from ``.aws-config/`` only (ARN file, then last-bucket line)."""
     cfg = (root or repo_root()) / ".aws-config"
     arn_line = read_aws_config_first_line(cfg / "s3tables-table-bucket-arn.txt")
@@ -582,7 +591,7 @@ def assert_bronze_warehouse_bucket_exists(bucket: str) -> None:
                 "error: BRONZE_BUCKET_NAME="
                 f"{bucket!r} does not exist (HeadBucket). Run `task bronze:glue-setup` "
                 "to create it (and the Glue database), or create the bucket yourself. "
-                f"Example: aws s3 mb s3://{bucket} --region \"$AWS_REGION\"",
+                f'Example: aws s3 mb s3://{bucket} --region "$AWS_REGION"',
                 file=sys.stderr,
             )
             raise SystemExit(1) from None
@@ -648,7 +657,9 @@ def aws_json(profile: str, region: str, args: list[str]) -> dict:
 
 
 def require_aws_cli_s3tables() -> None:
-    cp = subprocess.run(["aws", "s3tables", "help"], capture_output=True, text=True, check=False)
+    cp = subprocess.run(
+        ["aws", "s3tables", "help"], capture_output=True, text=True, check=False
+    )
     if cp.returncode != 0:
         print(
             "error: AWS CLI does not support 's3tables' commands. "

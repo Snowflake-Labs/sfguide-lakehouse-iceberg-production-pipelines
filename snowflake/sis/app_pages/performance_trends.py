@@ -10,7 +10,9 @@ import streamlit as st
 from colors import color_map
 
 st.title("Performance Trends")
-st.caption("Scoring efficiency over time — performance summary, distribution box plots, average score by balloon color, and 15-second time-window breakdown.")
+st.caption(
+    "Scoring efficiency over time — performance summary, distribution box plots, average score by balloon color, and 15-second time-window breakdown."
+)
 
 
 def show_summary(df):
@@ -26,8 +28,12 @@ def show_summary(df):
 if st.session_state.color_performance_data is not None:
     performance_trends_df = st.session_state.color_performance_data.copy()
 
-    performance_trends_df["window_start"] = pd.to_datetime(performance_trends_df["window_start"])
-    performance_trends_df["avg_score_per_pop"] = pd.to_numeric(performance_trends_df["avg_score_per_pop"])
+    performance_trends_df["window_start"] = pd.to_datetime(
+        performance_trends_df["window_start"]
+    )
+    performance_trends_df["avg_score_per_pop"] = pd.to_numeric(
+        performance_trends_df["avg_score_per_pop"]
+    )
 
     show_summary(performance_trends_df)
 
@@ -49,7 +55,9 @@ if st.session_state.color_performance_data is not None:
                 title="Average Score per Pop",
                 scale=alt.Scale(zero=False),
             ),
-            color=alt.Color("window_start:T", legend=None, scale=alt.Scale(scheme="viridis")),
+            color=alt.Color(
+                "window_start:T", legend=None, scale=alt.Scale(scheme="viridis")
+            ),
             tooltip=[
                 alt.Tooltip("window_start:T", title="Time Window", format="%H:%M:%S"),
                 alt.Tooltip("avg_score_per_pop:Q", title="Score", format=".1f"),
@@ -72,14 +80,24 @@ if st.session_state.color_performance_data is not None:
 
     st.subheader("Performance by Balloon Color")
 
-    color_stats = performance_trends_df.groupby("balloon_color").agg(
-        {
-            "avg_score_per_pop": ["mean", "min", "max", "count"],
-            "total_pops": "sum",
-        }
-    ).round(1)
+    color_stats = (
+        performance_trends_df.groupby("balloon_color")
+        .agg(
+            {
+                "avg_score_per_pop": ["mean", "min", "max", "count"],
+                "total_pops": "sum",
+            }
+        )
+        .round(1)
+    )
 
-    color_stats.columns = ["Average Score", "Min Score", "Max Score", "Count", "Total Pops"]
+    color_stats.columns = [
+        "Average Score",
+        "Min Score",
+        "Max Score",
+        "Count",
+        "Total Pops",
+    ]
     color_stats = color_stats.sort_values("Average Score", ascending=False)
 
     st.dataframe(
@@ -128,16 +146,25 @@ if st.session_state.color_performance_data is not None:
         alt.Chart(performance_trends_df)
         .mark_bar()
         .encode(
-            x=alt.X("balloon_color:N", title="Balloon Color", sort="-y", axis=alt.Axis(labels=False)),
+            x=alt.X(
+                "balloon_color:N",
+                title="Balloon Color",
+                sort="-y",
+                axis=alt.Axis(labels=False),
+            ),
             y=alt.Y("mean(avg_score_per_pop):Q", title="Average Score"),
             color=alt.Color(
                 "balloon_color:N",
                 legend=None,
-                scale=alt.Scale(domain=list(color_map.keys()), range=list(color_map.values())),
+                scale=alt.Scale(
+                    domain=list(color_map.keys()), range=list(color_map.values())
+                ),
             ),
             tooltip=[
                 alt.Tooltip("balloon_color:N", title="Color"),
-                alt.Tooltip("mean(avg_score_per_pop):Q", title="Avg Score", format=".1f"),
+                alt.Tooltip(
+                    "mean(avg_score_per_pop):Q", title="Avg Score", format=".1f"
+                ),
                 alt.Tooltip("count():Q", title="Count"),
             ],
         )
@@ -163,7 +190,13 @@ if st.session_state.color_performance_data is not None:
         .round(1)
     )
 
-    time_summary.columns = ["Mean Score", "Min Score", "Max Score", "# Balloons", "Total Pops"]
+    time_summary.columns = [
+        "Mean Score",
+        "Min Score",
+        "Max Score",
+        "# Balloons",
+        "Total Pops",
+    ]
     time_summary = time_summary.reset_index()
     time_summary = time_summary.rename(columns={"window_start": "Timestamp"})
 

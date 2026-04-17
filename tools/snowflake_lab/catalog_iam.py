@@ -19,6 +19,7 @@ Trust is a two-step lab pattern:
 2. **Snowflake-only trust** (``apply-trust-from-rendered``): after ``task snowflake:render-glue-catalog-trust``,
    replace the assume-role policy with ``GLUE_AWS_IAM_USER_ARN`` + ``sts:ExternalId`` per Snowflake docs.
 """
+
 from __future__ import annotations
 
 import json
@@ -108,7 +109,11 @@ def _account_id_from_glue_file_or_sts(root: Path, region: str) -> str:
         if isinstance(data, dict):
             db = data.get("Database") or {}
             cid = db.get("CatalogId")
-            if isinstance(cid, str) and cid.strip().isdigit() and len(cid.strip()) == 12:
+            if (
+                isinstance(cid, str)
+                and cid.strip().isdigit()
+                and len(cid.strip()) == 12
+            ):
                 return cid.strip()
     require_aws_profile()
     prof = (os.environ.get("AWS_PROFILE") or "").strip()
@@ -186,7 +191,10 @@ def create_read_role(
     root = repo_root_arg or repo_root()
     ctx = _load_lab_iam_context(root)
     rn = effective_catalog_read_role_name(role_name_opt)
-    print(f"info: IAM role name={rn!r} (override with SNOWFLAKE_GLUE_CATALOG_IAM_ROLE_NAME)", file=sys.stderr)
+    print(
+        f"info: IAM role name={rn!r} (override with SNOWFLAKE_GLUE_CATALOG_IAM_ROLE_NAME)",
+        file=sys.stderr,
+    )
     tpl = root / "lab/aws/snowflake-glue-catalog-read-policy.json"
     if not tpl.is_file():
         raise click.ClickException(f"Missing policy template {tpl}")
@@ -206,7 +214,9 @@ def create_read_role(
     arn = f"arn:aws:iam::{ctx['AWS_ACCOUNT_ID']}:role/{rn}"
 
     if dry_run:
-        click.echo("--- AssumeRolePolicyDocument (bootstrap; tighten with apply-trust-from-rendered) ---")
+        click.echo(
+            "--- AssumeRolePolicyDocument (bootstrap; tighten with apply-trust-from-rendered) ---"
+        )
         click.echo(trust_doc)
         click.echo("--- Inline policy SnowflakeGlueCatalogRead ---")
         click.echo(policy_text)
@@ -239,7 +249,9 @@ def create_read_role(
         else:
             raise
 
-    iam.put_role_policy(RoleName=rn, PolicyName="SnowflakeGlueCatalogRead", PolicyDocument=policy_text)
+    iam.put_role_policy(
+        RoleName=rn, PolicyName="SnowflakeGlueCatalogRead", PolicyDocument=policy_text
+    )
     if created:
         print(f"created IAM role {arn}", file=sys.stderr)
     else:
@@ -273,7 +285,12 @@ def create_read_role(
     type=click.Path(path_type=Path, exists=True, file_okay=False),
     default=None,
 )
-@click.option("--role-name", "role_name_opt", envvar="SNOWFLAKE_GLUE_CATALOG_IAM_ROLE_NAME", default=None)
+@click.option(
+    "--role-name",
+    "role_name_opt",
+    envvar="SNOWFLAKE_GLUE_CATALOG_IAM_ROLE_NAME",
+    default=None,
+)
 @click.option(
     "--role-arn",
     envvar="SNOWFLAKE_GLUE_CATALOG_IAM_ROLE_ARN",
@@ -298,7 +315,9 @@ def apply_trust_from_rendered(
     root = repo_root_arg or repo_root()
     apply_bronze_from_aws_config(root)
     derive_bronze_resource_names()
-    path = trust_document or (root / ".aws-config/snowflake-glue-catalog-trust-policy.rendered.json")
+    path = trust_document or (
+        root / ".aws-config/snowflake-glue-catalog-trust-policy.rendered.json"
+    )
     if not path.is_file():
         raise click.ClickException(
             f"Missing {path}. Run: task snowflake:render-glue-catalog-trust"
@@ -316,7 +335,10 @@ def apply_trust_from_rendered(
         rn = effective_catalog_read_role_name(None)
 
     if dry_run:
-        print(f"Would set AssumeRolePolicyDocument for role {rn!r} from {path}", file=sys.stderr)
+        print(
+            f"Would set AssumeRolePolicyDocument for role {rn!r} from {path}",
+            file=sys.stderr,
+        )
         click.echo(text)
         return
 
@@ -373,7 +395,9 @@ def delete_tagged_snowflake_glue_catalog_read_role(
     arn_path = root / ".aws-config" / "snowflake-glue-catalog-iam-role-arn.txt"
     if arn_path.is_file():
         try:
-            line = (arn_path.read_text(encoding="utf-8").splitlines() or [""])[0].strip()
+            line = (arn_path.read_text(encoding="utf-8").splitlines() or [""])[
+                0
+            ].strip()
         except OSError:
             line = ""
         if line.endswith(f":role/{role_name}") or line.endswith(f"/{role_name}"):
