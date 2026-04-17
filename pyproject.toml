@@ -58,3 +58,7 @@ dev = [
 [tool.uv.sources]
 sfutils-extvolumes = { git = "https://github.com/Snowflake-Labs/sfutils-extvolumes.git" }
 sfutils-pat = { git = "https://github.com/Snowflake-Labs/sfutils-pat.git" }
+common = { workspace = true }
+
+[tool.uv.workspace]
+members = ["packages/*"]

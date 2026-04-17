@@ -11,35 +11,35 @@ Stop pipeline sprawl and the cost of data duplication. This lab shows how to per
 ---
 config:
   theme: mc
-  layout: dagre
+  layout: elk
 ---
 flowchart TB
  subgraph Generation["Data Generation"]
         PyGen["Streaming<br>Balloon Pop Events"]
   end
  subgraph AWS["AWS"]
-        GlueCat["Glue Data Catalog balloon_game_events table"]
-        S3["S3 Warehouse <br>s3://bucket/iceberg/"]
-        LF["Lake Formation<br>Vended Credentials"]
+        GlueCat["Glue Data Catalog <i>balloon_game_events</i> table"]
+        S3["S3 Warehouse <br>s3://balloon_pops/iceberg/"]
+        LF["Lake Formation"]
   end
  subgraph Snowflake["Snowflake"]
         CI["Catalog Integration<br>Glue Iceberg REST + SigV4"]
-        CLD["Catalog-Linked Database<br>balloon_game_events"]
-        DTs["Dynamic Iceberg Tables<br>silverpipelines"]
-        ExtVol["Silver External Volume"]
+        CLD["Catalog Linked Database(CLD)<br><i>balloon_game_events</i>"]
+        DTs["Dynamic Iceberg Tables<br><i>silver</i> pipelines"]
+        ExtVol["Snowflake Storage<br>(PuPr)"]
         SiS["Streamlit in Snowflake"]
-        HIRC["Horizon REST Catalog HIRC"]
+        HIRC["Horizon Iceberg REST Catalog <br>(PuPr)"]
   end
     PyGen -- PyIceberg write --> GlueCat
-    PyGen -- Iceberg files --> S3
-    GlueCat --> CI
-    LF -- vended credentials --> CI
+    GlueCat --> S3
     CI --> CLD
     CLD --> DTs
     DTs -- writes Iceberg --> ExtVol
     DTs --> SiS
     DTs -.-> HIRC
-    HIRC -- Iceberg REST API --> DuckDB["DuckDB<br>Cross-Engine Access"]
+    HIRC <-- Iceberg REST API --> DuckDB["DuckDB<br>Cross-Engine Access"]
+    LF -- <b>vended credentials</b> --> CI
+    LF --> S3
 ```
 
 ### Lab Layers
@@ -138,7 +138,6 @@ Key variables by phase:
 | `SA_USER` | 5 | duckdb_sa | DuckDB HIRC service account username |
 | `SA_ROLE` | 5 | duckdb_silver_reader | DuckDB HIRC service account role |
 | `SNOWFLAKE_ACCOUNT_URL` | 5 | required | `https://<org>-<account>.snowflakecomputing.com` |
-| `SNOWFLAKE_PASSWORD` | 5 | from keychain | PAT value — output of `task snowflake:pat-print` |
 
 See [`.env.example`](.env.example) for all variables with inline documentation.
 
@@ -505,8 +504,9 @@ CREATE ROLE IF NOT EXISTS duckdb_silver_reader;
 
 GRANT USAGE ON DATABASE balloon_silver TO ROLE duckdb_silver_reader;
 GRANT USAGE ON SCHEMA balloon_silver.silver TO ROLE duckdb_silver_reader;
-GRANT SELECT ON ALL TABLES IN SCHEMA balloon_silver.silver TO ROLE duckdb_silver_reader;
-GRANT SELECT ON FUTURE TABLES IN SCHEMA balloon_silver.silver TO ROLE duckdb_silver_reader;
+-- Required — GRANT ON ALL TABLES silently skips Dynamic Iceberg Tables:
+GRANT SELECT ON ALL DYNAMIC TABLES IN SCHEMA balloon_silver.silver TO ROLE duckdb_silver_reader;
+GRANT SELECT ON FUTURE DYNAMIC TABLES IN SCHEMA balloon_silver.silver TO ROLE duckdb_silver_reader;
 
 CREATE USER IF NOT EXISTS duckdb_sa
   DEFAULT_ROLE = duckdb_silver_reader
@@ -519,34 +519,17 @@ GRANT ROLE duckdb_silver_reader TO USER duckdb_sa;
 
 ### Generate a PAT
 
-Use `sfutils-pat` to generate a Programmatic Access Token for `duckdb_sa`, store it in your OS keychain, and copy the value to `.env`.
-
-Create the PAT and store it in the OS keychain:
+Create a Programmatic Access Token for `duckdb_sa` and store it in the OS keyring:
 
 ```bash
 task snowflake:pat-create
 ```
 
-Print the PAT value from the keychain to your console:
-
-```bash
-task snowflake:pat-print
-```
-
-Copy the printed value into `.env`:
-
-```bash
-SA_USER=duckdb_sa
-SA_ROLE=duckdb_silver_reader
-SNOWFLAKE_ACCOUNT_URL=https://<org>-<account>.snowflakecomputing.com
-SNOWFLAKE_PASSWORD=<paste output of: task snowflake:pat-print>
-```
-
-> **Security:** Writing a PAT to `.env` is a local-development convenience. `.env` is listed in `.gitignore` and must never be committed. The canonical copy lives in your OS keychain. For shared or CI environments, inject `SNOWFLAKE_PASSWORD` at runtime from a vault or CI secrets manager.
+The PAT is stored in your OS keyring (Keychain on macOS, Secret Service on Linux, Windows Credential Manager on Windows). The notebook loads it automatically — no `.env` paste required.
 
 ### Run the Notebook
 
-Open `notebooks/duckdb_lab_guide.ipynb` for a step-by-step walkthrough. The notebook loads the PAT from `.env`, installs the DuckDB Iceberg extension, attaches `balloon_silver` via HIRC, and queries all five silver DTs.
+Open `notebooks/duckdb_lab_guide.ipynb` for a step-by-step walkthrough. The notebook loads the PAT from the OS keyring (falls back to `SNOWFLAKE_PASSWORD` for CI), installs the DuckDB Iceberg extension, attaches `balloon_silver` via HIRC, and queries all five silver DTs.
 
 ### Key DuckDB SQL
 
@@ -563,22 +546,23 @@ CREATE SECRET iceberg_pat_secret (
   OAUTH2_SCOPE 'session:role:duckdb_silver_reader'
 );
 
-ATTACH 'balloon_silver' AS balloon_silver (
+-- Uppercase catalog name required — HIRC is case-sensitive; lowercase returns HTTP 404:
+ATTACH 'BALLOON_SILVER' AS balloon_silver (
   TYPE iceberg,
   SECRET iceberg_pat_secret,
   ENDPOINT 'https://<account>.snowflakecomputing.com/polaris/api/catalog',
   SUPPORT_NESTED_NAMESPACES false
 );
 
-SHOW ALL TABLES;
+-- SHOW ALL TABLES returns empty for Iceberg REST catalogs — use USE first:
+USE balloon_silver.SILVER;
+SHOW TABLES;
 
--- Identifiers are UPPERCASE when accessed through HIRC
+-- Identifiers are UPPERCASE when accessed through HIRC:
 SELECT player, total_score, bonus_pops, last_event_ts
 FROM balloon_silver.SILVER.DT_PLAYER_LEADERBOARD
 ORDER BY total_score DESC NULLS LAST
 LIMIT 10;
-
-DETACH balloon_silver;
 ```
 
 ### Limitations
@@ -587,6 +571,7 @@ DETACH balloon_silver;
 - Reads work on Iceberg v2 or earlier only
 - Tables with row access policies or masking policies are not accessible via HIRC
 - Only Snowflake-managed Iceberg tables are supported — not externally managed, Delta, or Parquet Direct
+- `SHOW ALL TABLES` and `information_schema` are unavailable for attached Iceberg REST catalogs in DuckDB
 
 ---
 
