@@ -23,7 +23,6 @@ from tools.bronze_preload.bronze_aws import (
 )
 from tools.bronze_preload.bronze_tables import BRONZE_RAW_EVENTS_TABLE
 from tools.snowflake_lab.defaults import (
-    DEFAULT_CATALOG_INTEGRATION_NAME,
     DEFAULT_SILVER_DATABASE,
     DEFAULT_SILVER_SCHEMA,
     DEFAULT_SNOWFLAKE_WAREHOUSE,
@@ -785,58 +784,78 @@ def generate_cmd(
 
 @cli.command("print-env-hints")
 def print_env_hints_cmd() -> None:
-    """Print repo defaults; SIGV4 ARN is optional in env if create-read-role wrote the .txt file."""
+    """Print repo defaults grouped by section; shows .env overrides vs defaults."""
+    # Load .env if present so we can show current values vs defaults.
+    env_values: dict[str, str] = {}
+    env_file = repo_root() / ".env"
+    if env_file.is_file():
+        try:
+            from dotenv import dotenv_values
+
+            env_values = {
+                k: v for k, v in dotenv_values(str(env_file)).items() if v is not None
+            }
+        except ImportError:
+            pass  # python-dotenv not installed; show defaults only
+
+    def _show(var: str, default: str, note: str = "") -> None:
+        val = env_values.get(var)
+        if val is not None:
+            suffix = click.style(f"  (from .env: {val!r})", fg="yellow")
+        else:
+            suffix = click.style(f"  (default: {default!r})", dim=True)
+        line = f"  {var}={default}"
+        if note:
+            line += f"  # {note}"
+        click.echo(line + suffix)
+
+    ci_name = resolve_catalog_integration_name()
     rel_arn = SIGV4_ROLE_ARN_REL.as_posix()
-    click.echo("# Snowflake CLD — defaults (nothing to export unless you override)")
-    click.echo(
-        f"#   SNOWFLAKE_CATALOG_INTEGRATION_NAME={DEFAULT_CATALOG_INTEGRATION_NAME!r}  # default"
+
+    click.echo(click.style("--- CLD / Catalog Integration ---", bold=True))
+    lab = os.environ.get("LAB_USERNAME", "").strip()
+    ci_note = f"auto-derived from LAB_USERNAME={lab!r}" if lab else ""
+    _show("SNOWFLAKE_CATALOG_INTEGRATION_NAME", ci_name, ci_note)
+    _show(
+        "SNOWFLAKE_LINKED_DATABASE_NAME",
+        BRONZE_RAW_EVENTS_TABLE,
+        "default for generate-lab-sql",
     )
+    click.echo()
+
+    click.echo(click.style("--- SIGV4 signer role ---", bold=True))
     click.echo(
-        f"#   SNOWFLAKE_LINKED_DATABASE_NAME={BRONZE_RAW_EVENTS_TABLE!r}  # default in generate-lab-sql"
+        f"  Default: no env var needed — task snowflake:create-glue-catalog-read-role writes {rel_arn}"
     )
+    click.echo("  Override only if you use a different IAM role:")
+    _show("SNOWFLAKE_GLUE_CATALOG_IAM_ROLE_ARN", "arn:aws:iam::<account>:role/<role>")
+    click.echo()
+
+    click.echo(click.style("--- Dynamic Iceberg Tables ---", bold=True))
+    _show("SNOWFLAKE_SILVER_DATABASE", DEFAULT_SILVER_DATABASE)
+    _show("SNOWFLAKE_SILVER_SCHEMA", DEFAULT_SILVER_SCHEMA)
+    _show("SNOWFLAKE_WAREHOUSE", DEFAULT_SNOWFLAKE_WAREHOUSE, "DT refresh compute")
     click.echo(
-        "# SIGV4 / signer role (default: no env var — use create-read-role, then generate-lab-sql reads file):"
+        click.style(
+            "  Storage: EXTERNAL_VOLUME = SNOWFLAKE_MANAGED (no external volume setup needed)",
+            dim=True,
+        )
     )
+    click.echo()
+
     click.echo(
-        "#   task snowflake:create-glue-catalog-read-role   # writes .aws-config/…arn.txt"
+        click.style("--- Optional (connection / multi-connection) ---", bold=True)
     )
-    click.echo("# Override signer role only if you use a different IAM role:")
+    _show("SNOWFLAKE_DEFAULT_CONNECTION_NAME", "<snow default>")
+    _show("SNOWFLAKE_ROLE", "ACCOUNTADMIN")
+    click.echo()
+
+    click.echo(click.style("--- S3 Tables catalog shape (opt-in) ---", bold=True))
     click.echo(
-        "#   SNOWFLAKE_GLUE_CATALOG_IAM_ROLE_ARN='arn:aws:iam::<account>:role/<role>'"
+        "  Set SNOWFLAKE_GLUE_REST_USE_S3TABLES_CATALOG=1 or pass --glue-s3tables-catalog to generate:"
     )
-    click.echo(f"#   # or first non-comment line in {rel_arn}")
-    click.echo(
-        "# Default: AWS Glue Data Catalog (Snowflake Step 2) — CATALOG_NAME = account id from glue-database.json; "
-        "CATALOG_NAMESPACE = Glue database name."
-    )
-    click.echo(
-        "# Optional S3 Tables catalog shape: SNOWFLAKE_GLUE_REST_USE_S3TABLES_CATALOG=1 or generate --glue-s3tables-catalog"
-    )
-    click.echo(
-        "#   BRONZE_S3TABLES_BUCKET_NAME=…   # or first line of .aws-config/bronze-s3tables-last-bucket-name.txt"
-    )
-    click.echo(
-        f"#   S3TABLES_NAMESPACE={DEFAULT_S3TABLES_NAMESPACE!r}   # or SNOWFLAKE_S3TABLES_CATALOG_NAMESPACE"
-    )
-    click.echo(
-        "# Optional full CATALOG_NAME override: SNOWFLAKE_GLUE_REST_CATALOG_NAME='…'"
-    )
-    click.echo("# Optional (trial / multi-connection; see Snowflake CLI docs):")
-    click.echo(
-        "#   SNOWFLAKE_DEFAULT_CONNECTION_NAME=…  SNOWFLAKE_ROLE=ACCOUNTADMIN  SNOWFLAKE_WAREHOUSE=COMPUTE_WH"
-    )
-    click.echo(
-        "# Dynamic Iceberg Tables (task dt:generate-sql → 03_dt_pipelines.generated.sql):"
-    )
-    click.echo(f"#   SNOWFLAKE_SILVER_DATABASE={DEFAULT_SILVER_DATABASE!r}  # default")
-    click.echo(f"#   SNOWFLAKE_SILVER_SCHEMA={DEFAULT_SILVER_SCHEMA!r}  # default")
-    click.echo(
-        "#   Storage: EXTERNAL_VOLUME = SNOWFLAKE_MANAGED (Snowflake-managed Iceberg storage — no external volume setup needed)"
-    )
-    click.echo(
-        "# Tasks: task snowflake:create-glue-catalog-read-role | task snowflake:generate-lab-sql | "
-        "task dt:generate-sql | task snowflake:describe-catalog-integration"
-    )
+    _show("BRONZE_S3TABLES_BUCKET_NAME", "<table-bucket-name>")
+    _show("S3TABLES_NAMESPACE", DEFAULT_S3TABLES_NAMESPACE)
 
 
 if __name__ == "__main__":
