@@ -219,3 +219,18 @@ tasks:
       See **[lab/snowflake-streamlit-sis.md](../../lab/snowflake-streamlit-sis.md)** and **[snowflake/sis/README.md](../../snowflake/sis/README.md)**.
     cmds:
       - uv run sis-deploy deploy {{.CLI_ARGS}}
+
+  url:
+    desc: Print deployed Streamlit in Snowflake app URL
+    summary: |
+      Runs `snow streamlit get-url` for the deployed balloon game dashboard.
+      Derives the app name from LAB_USERNAME when set (same logic as sis-deploy):
+        LAB_USERNAME=alice → alice_balloon_game_dashboard
+        no LAB_USERNAME   → balloon_game_dashboard
+
+      Extra flags after `--` are forwarded to `snow streamlit get-url`.
+    cmds:
+      - |
+          prefix="${LAB_USERNAME:+${LAB_USERNAME}_}"
+          uv run snow streamlit get-url "${prefix}balloon_game_dashboard" \
+            --project snowflake/sis {{.CLI_ARGS}}
