@@ -17,12 +17,13 @@ tasks:
     summary: |
       Emits **five** Dynamic Iceberg pipelines (legacy RisingWave MV parity): leaderboard, per-player color stats,
       15-second window scores, windowed color pops, color performance trends. Requires **`.aws-config/glue-database.json`**
-      (same as CLD) for Glue schema quoting. Set **`SNOWFLAKE_ICEBERG_EXTERNAL_VOLUME`** (or **`--external-volume`**);
-      optional **`SNOWFLAKE_SILVER_DATABASE`**, **`SNOWFLAKE_SILVER_SCHEMA`**, **`SNOWFLAKE_WAREHOUSE`**, **`SNOWFLAKE_DT_PATH_PREFIX`**.
+      (same as CLD) for Glue schema quoting.
+
+      Storage: all DTs use **`EXTERNAL_VOLUME = SNOWFLAKE_MANAGED`** — no external volume setup required.
+
+      Optional overrides: **`SNOWFLAKE_SILVER_DATABASE`**, **`SNOWFLAKE_SILVER_SCHEMA`**, **`SNOWFLAKE_WAREHOUSE`**.
 
       Catalog + CLD scripts: **`task snowflake:generate-lab-sql`** (does not overwrite this file unless you run both).
-
-      External volume automation: **`task dt:extvol-create-dry-run`** / **`task dt:extvol-create`** (defaults from **`LAB_USERNAME`** or **`SILVER_EXTVOLUME_BUCKET_SLUG`** — **`tools/snowflake_lab/extvol_resolve.py`**, **`.env.example`**).
 
       Stdout: **`task dt:generate-sql-stdout`**
     cmds:
