@@ -154,13 +154,14 @@ tasks:
 
       - **`SA_USER`** — service account username (default: `duckdb_sa`)
       - **`SA_ROLE`** — PAT role restriction (default: `duckdb_silver_reader`)
+      - **`SNOWFLAKE_SILVER_DATABASE`** — database for PAT objects (default: `balloon_silver`)
 
       ## Verify flag names
 
       Run `uv run sfutils-pat --help` after `uv sync` to confirm subcommand and flag names
       before executing this task in a new environment.
     cmds:
-      - "{{.PAT_CLI}} create --user ${SA_USER:-duckdb_sa} --role ${SA_ROLE:-duckdb_silver_reader}"
+      - "{{.PAT_CLI}} create --user ${SA_USER:-duckdb_sa} --role ${SA_ROLE:-duckdb_silver_reader} --db ${SNOWFLAKE_SILVER_DATABASE:-balloon_silver}"
 
   pat-print:
     desc: Print PAT value for duckdb_sa from OS keychain to stdout; copy to .env as SNOWFLAKE_PASSWORD
