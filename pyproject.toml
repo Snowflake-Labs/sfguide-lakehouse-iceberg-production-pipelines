@@ -43,6 +43,7 @@ packages = ["tools"]
 
 [dependency-groups]
 dev = [
+    "cfn-lint>=1.49.3",
     "ipykernel>=6.29.5",
     "jupyter>=1.1.1",
     "mkdocs>=1.6.1",

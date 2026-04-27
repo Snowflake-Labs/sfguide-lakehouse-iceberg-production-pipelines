@@ -15,6 +15,7 @@ repos:
       - id: no-commit-to-branch
         args: [--branch, main]
       - id: check-yaml
+        args: [--unsafe]  # allow CFN-specific YAML tags (!GetAtt, !Sub, !Ref, etc.)
       - id: check-toml
       - id: check-json
 
@@ -34,6 +35,16 @@ repos:
         language: system
         entry: uv run --no-sync yamllint
         types: [yaml]
+
+  # --- CloudFormation linting ------------------------------------------------
+  - repo: local
+    hooks:
+      - id: cfn-lint
+        name: cfn-lint
+        language: system
+        entry: uv run --no-sync cfn-lint
+        types: [yaml]
+        files: ^templates/
 
   # --- Notebook output stripping ---------------------------------------------
   - repo: https://github.com/kynan/nbstripout

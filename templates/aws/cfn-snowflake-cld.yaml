@@ -1,0 +1,220 @@
+# Copyright 2025 Snowflake Inc.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  IAM roles and Lake Formation setup for Snowflake Catalog-Linked Database
+  with vended credentials.
+
+Parameters:
+  SnowflakeExternalId:
+    Type: String
+    Description: >-
+      External ID from DESC CATALOG INTEGRATION (GLUE_AWS_EXTERNAL_ID).
+      Run CREATE CATALOG INTEGRATION (ENABLED = FALSE) first, then DESC to get this value.
+
+  SnowflakeUserArn:
+    Type: String
+    Description: >-
+      IAM User ARN from DESC CATALOG INTEGRATION (GLUE_AWS_IAM_USER_ARN).
+      Run CREATE CATALOG INTEGRATION (ENABLED = FALSE) first, then DESC to get this value.
+
+  SnowflakeIAMRoleName:
+    Type: String
+    Description: Name of the IAM role Snowflake assumes to access Glue and Lake Formation.
+
+  LFIAMRoleName:
+    Type: String
+    Description: Name of the IAM role Lake Formation uses to vend S3 credentials.
+
+  GlueDatabase:
+    Type: String
+    Description: Glue database name containing the Iceberg tables.
+
+  S3Bucket:
+    Type: String
+    Description: S3 bucket where Iceberg data resides.
+
+Resources:
+  SnowflakeGlueCatalogRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref SnowflakeIAMRoleName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Ref SnowflakeUserArn
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref SnowflakeExternalId
+      Policies:
+        - PolicyName: GlueLakeFormationAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: GlueCatalogAccess
+                Effect: Allow
+                Action:
+                  - glue:GetCatalog
+                  - glue:GetCatalogs
+                  - glue:GetDatabase
+                  - glue:GetDatabases
+                  - glue:GetTable
+                  - glue:GetTables
+                Resource:
+                  - !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:catalog
+                  - !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:catalog/*
+                  - !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:database/${GlueDatabase}
+                  - !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:table/${GlueDatabase}/*
+              - Sid: LakeFormationCredentialVending
+                Effect: Allow
+                Action:
+                  - lakeformation:GetDataAccess
+                  - lakeformation:GetTemporaryGlueTableCredentials
+                  - lakeformation:GetTemporaryGluePartitionCredentials
+                Resource: '*'
+
+  LakeFormationDataAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref LFIAMRoleName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: LakeFormationAssumeRole
+            Effect: Allow
+            Principal:
+              Service: lakeformation.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3ReadAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: S3ReadForIceberg
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::${S3Bucket}
+                  - !Sub arn:aws:s3:::${S3Bucket}/*
+
+  RegisterS3WithLakeFormation:
+    Type: AWS::LakeFormation::Resource
+    Properties:
+      ResourceArn: !Sub arn:aws:s3:::${S3Bucket}
+      RoleArn: !GetAtt LakeFormationDataAccessRole.Arn
+      UseServiceLinkedRole: false
+      HybridAccessEnabled: true
+
+  # Lambda role — only needs glue:UpdateDatabase and CloudWatch Logs
+  GlueUpdateDBRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: GlueUpdateDB
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: glue:UpdateDatabase
+                Resource: !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:database/${GlueDatabase}
+
+  # Inline Lambda — disables "Use only IAM access control" on the existing Glue database
+  # by clearing CreateTableDefaultPermissions. Runs on Create and Update; no-op on Delete.
+  GlueUpdateDBFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt GlueUpdateDBRole.Arn
+      Runtime: python3.12
+      Timeout: 30
+      Code:
+        ZipFile: |
+          import boto3, cfnresponse
+          def handler(event, context):
+            try:
+              if event['RequestType'] in ('Create', 'Update'):
+                db = event['ResourceProperties']['DatabaseName']
+                boto3.client('glue').update_database(
+                  Name=db,
+                  DatabaseInput={'Name': db, 'CreateTableDefaultPermissions': []})
+              cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+            except Exception as e:
+              cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)})
+
+  # Custom resource — triggers the Lambda above
+  DisableIAMOnlyAccessForGlueDB:
+    Type: Custom::GlueDisableIAMOnly
+    Properties:
+      ServiceToken: !GetAtt GlueUpdateDBFunction.Arn
+      DatabaseName: !Ref GlueDatabase
+
+  GrantSnowflakeDatabaseDescribe:
+    Type: AWS::LakeFormation::PrincipalPermissions
+    DependsOn:
+      - RegisterS3WithLakeFormation
+      - DisableIAMOnlyAccessForGlueDB
+    Properties:
+      Principal:
+        DataLakePrincipalIdentifier: !GetAtt SnowflakeGlueCatalogRole.Arn
+      Resource:
+        Database:
+          CatalogId: !Sub '${AWS::AccountId}'
+          Name: !Ref GlueDatabase
+      Permissions:
+        - DESCRIBE
+      PermissionsWithGrantOption: []
+
+  GrantSnowflakeTableAccess:
+    Type: AWS::LakeFormation::PrincipalPermissions
+    DependsOn:
+      - RegisterS3WithLakeFormation
+      - DisableIAMOnlyAccessForGlueDB
+    Properties:
+      Principal:
+        DataLakePrincipalIdentifier: !GetAtt SnowflakeGlueCatalogRole.Arn
+      Resource:
+        Table:
+          CatalogId: !Sub '${AWS::AccountId}'
+          DatabaseName: !Ref GlueDatabase
+          TableWildcard: {}
+      Permissions:
+        - SELECT
+        - DESCRIBE
+      PermissionsWithGrantOption: []
+
+Outputs:
+  SnowflakeRoleArn:
+    Description: ARN of the Snowflake IAM role (use in CREATE CATALOG INTEGRATION)
+    Value: !GetAtt SnowflakeGlueCatalogRole.Arn
+
+  LakeFormationRoleArn:
+    Description: ARN of the Lake Formation data access role
+    Value: !GetAtt LakeFormationDataAccessRole.Arn
