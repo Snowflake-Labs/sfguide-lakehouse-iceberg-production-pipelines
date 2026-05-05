@@ -1281,6 +1281,22 @@ wheels = [
 ]
 
 [[package]]
+name = "jupytext"
+version = "1.19.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markdown-it-py" },
+    { name = "mdit-py-plugins" },
+    { name = "nbformat" },
+    { name = "packaging" },
+    { name = "pyyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/13/a5/80c02f307c8ce863cb33e27daf049315e9d96979e14eead700923b5ec9cc/jupytext-1.19.1.tar.gz", hash = "sha256:82587c07e299173c70ed5e8ec7e75183edf1be289ed518bab49ad0d4e3d5f433", size = 4307829, upload-time = "2026-01-25T21:35:13.276Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/16/5a/736dd2f4535dbf3bf26523f9158c011389ef88dd06ec2eef67fd744f1c7b/jupytext-1.19.1-py3-none-any.whl", hash = "sha256:d8975035155d034bdfde5c0c37891425314b7ea8d3a6c4b5d18c294348714cd9", size = 170478, upload-time = "2026-01-25T21:35:11.17Z" },
+]
+
+[[package]]
 name = "keyring"
 version = "25.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1325,6 +1341,7 @@ dev = [
     { name = "cfn-lint" },
     { name = "ipykernel" },
     { name = "jupyter" },
+    { name = "jupytext" },
     { name = "mkdocs" },
     { name = "mkdocs-material" },
     { name = "mkdocs-mermaid2-plugin" },
@@ -1350,8 +1367,8 @@ requires-dist = [
     { name = "pyiceberg", extras = ["s3fs"], specifier = ">=0.8.1" },
     { name = "pyjwt", specifier = ">=2.10.1" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
-    { name = "sfutils-extvolumes", git = "https://github.com/Snowflake-Labs/sfutils-extvolumes.git" },
-    { name = "sfutils-pat", git = "https://github.com/Snowflake-Labs/sfutils-pat.git" },
+    { name = "sfutils-extvolumes", git = "https://github.com/Snowflake-Labs/sfutils-extvolumes.git?tag=v0.1.0" },
+    { name = "sfutils-pat", git = "https://github.com/Snowflake-Labs/sfutils-pat.git?tag=v0.1.0" },
     { name = "snowflake-cli", specifier = ">=3.16" },
 ]
 
@@ -1360,6 +1377,7 @@ dev = [
     { name = "cfn-lint", specifier = ">=1.49.3" },
     { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "jupyter", specifier = ">=1.1.1" },
+    { name = "jupytext", specifier = ">=1.19.1" },
     { name = "mkdocs", specifier = ">=1.6.1" },
     { name = "mkdocs-material", specifier = ">=9.6.7" },
     { name = "mkdocs-mermaid2-plugin", specifier = ">=1.2.1" },
@@ -1439,6 +1457,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/99/5b/a36a337438a14116b16480db471ad061c36c3694df7c2084a0da7ba538b7/matplotlib_inline-0.1.7.tar.gz", hash = "sha256:8423b23ec666be3d16e16b60bdd8ac4e86e840ebd1dd11a30b9f117f2fa0ab90", size = 8159, upload-time = "2024-04-15T13:44:44.803Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8f/8e/9ad090d3553c280a8060fbf6e24dc1c0c29704ee7d1c372f0c174aa59285/matplotlib_inline-0.1.7-py3-none-any.whl", hash = "sha256:df192d39a4ff8f21b1895d72e6a13f5fcc5099f00fa84384e0ea28c2cc0653ca", size = 9899, upload-time = "2024-04-15T13:44:43.265Z" },
+]
+
+[[package]]
+name = "mdit-py-plugins"
+version = "0.5.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markdown-it-py" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b2/fd/a756d36c0bfba5f6e39a1cdbdbfdd448dc02692467d83816dff4592a1ebc/mdit_py_plugins-0.5.0.tar.gz", hash = "sha256:f4918cb50119f50446560513a8e311d574ff6aaed72606ddae6d35716fe809c6", size = 44655, upload-time = "2025-08-11T07:25:49.083Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fb/86/dd6e5db36df29e76c7a7699123569a4a18c1623ce68d826ed96c62643cae/mdit_py_plugins-0.5.0-py3-none-any.whl", hash = "sha256:07a08422fc1936a5d26d146759e9155ea466e842f5ab2f7d2266dd084c8dab1f", size = 57205, upload-time = "2025-08-11T07:25:47.597Z" },
 ]
 
 [[package]]
@@ -2811,7 +2841,7 @@ wheels = [
 [[package]]
 name = "sfutils-extvolumes"
 version = "0.1.0"
-source = { git = "https://github.com/Snowflake-Labs/sfutils-extvolumes.git#d3ca0e61ee9d542c46803a1e727d529b9aef27fe" }
+source = { git = "https://github.com/Snowflake-Labs/sfutils-extvolumes.git?tag=v0.1.0#53bf4454794e7804a5fb27a590fff0f7f9dcdef8" }
 dependencies = [
     { name = "boto3" },
     { name = "click" },
@@ -2822,7 +2852,7 @@ dependencies = [
 [[package]]
 name = "sfutils-pat"
 version = "0.1.0"
-source = { git = "https://github.com/Snowflake-Labs/sfutils-pat.git#1dae09d3cb70b0ee3ed61369cd4b7e3c025b13de" }
+source = { git = "https://github.com/Snowflake-Labs/sfutils-pat.git?tag=v0.1.0#d10c91e1754021b4457d45187fb5bff315b71632" }
 dependencies = [
     { name = "click" },
     { name = "keyring" },
