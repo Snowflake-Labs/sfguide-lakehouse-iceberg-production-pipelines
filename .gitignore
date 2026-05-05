@@ -40,3 +40,4 @@ snowflake/sis/output/
 sync-sfquickstarts-local.sh
 sfguides/**
 Lakehouse-Transformations-Build-Product.md
+plans
